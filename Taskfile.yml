@@ -1,0 +1,48 @@
+version: '3'
+
+env:
+  KAFKA_COMPOSE_FILE: docker-compose.kafka.yml
+
+tasks:
+  _configure:
+    dir:  ./compose
+    cmds:
+    - mkdir ./data
+    - mkdir ./data/broker-1
+    - mkdir ./data/broker-2
+    - mkdir ./data/broker-3
+    status:
+    - test -d ./data/broker-1
+    - test -d ./data/broker-2
+    - test -d ./data/broker-3
+
+  _prepare:
+    dir:  ./compose
+    cmds:
+    - echo "CLUSTER_ID={{.CLUSTER_ID}}"> .env
+    vars:
+      CLUSTER_ID:
+        sh: kafka-storage random-uuid 
+    status:
+    - test -f .env
+
+  start:
+    dir: ./compose
+    deps: [_configure, _prepare]
+    cmds:
+    - docker-compose -f $KAFKA_COMPOSE_FILE up -d
+
+  stop:
+    dir: ./compose
+    cmds:
+    - docker-compose -f $KAFKA_COMPOSE_FILE stop
+
+  clean:
+    dir: ./compose
+    cmds:
+    - docker-compose -f $KAFKA_COMPOSE_FILE down
+    - cmd: rm .env # delete the env-file
+      silent: true
+      ignore_error: true
+    - cmd: rm -rf ./data # remove the data directories
+      ignore_error: true
